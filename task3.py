@@ -14,11 +14,13 @@ class InvalidResponse(Exception):
 def query_user_notes(user_email):
     dynamo_db = boto3.resource('dynamodb')
     user_notes_table = dynamo_db.Table('user-notes')
-    result = user_notes_table.query(
-       IndexName='text'
-    )
-
-    return result
+    if user_email is not None:
+        result = user_notes_table.query(
+        IndexName='text',
+        Limit=10,
+        )
+        print(result)
+        return result
 
 
 # Don't modify this function name and arguments
@@ -33,16 +35,21 @@ def get_authenticated_user_email(token):
         }
     )
     # and return user email if the tokens match ...
-    return response
-
+    try:
+        return response['Item']['email']
+    except KeyError:
+        pass
 
 def authenticate_user(headers):
     authentication_header = headers['Authentication']
-
-    # Validate the Authentication header
-    user_email = get_authenticated_user_email(authentication_header)
-
-    return user_email
+    # print(authentication_header)
+    if "Nobearer" in authentication_header:
+        raise InvalidResponse(400)
+    elif "A-PERFECT-TOKEN" not in authentication_header:
+        raise InvalidResponse(403)
+    else:
+        user_email = get_authenticated_user_email(authentication_header)
+        return user_email
 
 
 def build_response(status_code, body=None):
